@@ -1,0 +1,18 @@
+(version 1)
+
+# Kabuki DRC rules. Goes next to the board's .kicad_pro, with the same name.
+
+# The XIAO footprint's solder windows are cut-outs its own pads sit in, on purpose (#43).
+# This exempts only those pads against those cut-outs, so a real edge problem still shows up.
+(rule "xiao_solder_windows"
+  (constraint edge_clearance (min -1mm))
+  (condition "A.memberOfFootprint('MCU1') && B.memberOfFootprint('MCU1')"))
+
+# JLCPCB limits for this board (#24)
+(rule "jlc_track_width"
+  (constraint track_width (min 0.2mm))
+  (condition "A.Type == 'Track'"))
+(rule "jlc_via"
+  (constraint via_diameter (min 0.6mm))
+  (constraint hole_size (min 0.3mm))
+  (condition "A.Type == 'Via'"))

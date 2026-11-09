@@ -1,5 +1,9 @@
 # Kabuki (trackpoint split, Narsil successor) — Ergogen config
 # Stage: points + outlines done; pcbs = switches, diodes, XIAO, JST, power switch, encoder, trackpoint, holes.
+# 2026-11-08: hybrid MX + Choc hotswap on every key (`kabuki/switch_hybrid`, replaces the built-in `mx`).
+#   Diodes moved into the gap beside each key's MX socket (8.25 mm from the centre); the encoder
+#   push diode keeps its spot. Right half: power switch 1.1 mm higher, trackpoint 0.75 mm further
+#   out. KiCad 9 DRC: 0 errors; unconnected 95 left, 97 right.
 # 2026-11-05: 7 mounting holes replaced by 4 corner holes + 1 spare, for a plate screwed into case-floor
 #   posts. Battery bay moved 1 mm toward the thumbs to clear the top inner post.
 # 2026-11-05: converted to MX: 19.05 mm spacing, hotswap `mx` footprint, ring stagger 0.45 -> 0.55.
@@ -293,28 +297,40 @@ pcbs:
         outline: left_encoder
         layer: F.SilkS
     footprints:
-      mx_hotswap:
-        what: mx
-        # only this half's keys, and not the aux slot (the encoder lives there)
+      switch:
+        # MX + Choc hotswap on every key (2026-11-07, feasibility R16.1). Replaces the built-in
+        # `mx`. MX socket in the upper half, Choc socket in the lower half (Choc switches go in
+        # turned 180 degrees). Only this half's keys, not the aux slot (the encoder lives there).
+        what: kabuki/switch_hybrid
         where: [[key, -aux, meta.mirrored ~ false]]
         params:
-          keycaps: true
-          # was true: the extra front-side socket pads collided with the XIAO pins (0.00 mm)
-          # in the ring column, and a two-board design doesn't need them
-          reverse: false
-          hotswap: true
           from: "{{column_net}}"
           to: "{{colrow}}"
       diode:
         what: ceoloide/diode_tht_sod123 # 2 back pads; pad 1 (cathode) = "to" = row net
-        # includes the aux slot: the encoder push is a matrix key (COL2/ROW3) and needs a diode
-        where: [[key, meta.mirrored ~ false]]
+        # every key except the aux slot; the encoder push's diode is placed below
+        where: [[key, -aux, meta.mirrored ~ false]]
         params:
           side: B
           from: "{{colrow}}"
           to: "{{row_net}}"
         adjust:
-          shift: [0, -5] # lower half of the key; the hotswap socket is in the upper half
+          # in the gap above the key, past its MX socket (pads end 6.3 mm up) and below the
+          # Choc socket of the key above (pads start 11.8 mm up). Was [0, -5], where the Choc
+          # socket now sits. Same spot as the Lever Flake's diodes.
+          shift: [0, 8.25]
+      diode_encoder:
+        # the encoder push is a matrix key (COL2/ROW3) and needs a diode. The aux slot has no
+        # switch sockets, so it keeps the old spot below the encoder centre: [0, 8.25] would
+        # land on the encoder's push-switch pins.
+        what: ceoloide/diode_tht_sod123
+        where: [[aux, meta.mirrored ~ false]]
+        params:
+          side: B
+          from: "{{colrow}}"
+          to: "{{row_net}}"
+        adjust:
+          shift: [0, -5]
       encoder:
         what: ceoloide/rotary_encoder_ec11_ec12
         where: [[aux, meta.mirrored ~ false]]
@@ -483,13 +499,10 @@ pcbs:
         layer: B.SilkS
       # (the stick hole now comes from the trackpoint footprint below, as an NPTH)
     footprints:
-      mx_hotswap:
-        what: mx
+      switch:
+        what: kabuki/switch_hybrid
         where: [[key, -aux, meta.mirrored ~ true]]
         params:
-          keycaps: true
-          reverse: false
-          hotswap: true
           from: "{{column_net}}"
           to: "{{colrow}}"
         adjust:
@@ -505,7 +518,9 @@ pcbs:
           from: "{{colrow}}"
           to: "{{row_net}}"
         adjust:
-          shift: [0, 5] # upper half, since the sockets moved to the lower half
+          # the switch is turned 180 degrees on this half, so the MX socket is in the lower half
+          # and the diode goes in the gap below the key. Was [0, 5], where the Choc socket now sits.
+          shift: [0, -8.25]
       # ---- M2 mounting holes (4 corners + 1 spare per half) ----
       # The plate screws down through these into heat-set inserts on case-floor posts.
       # Clear on BOTH halves: >= 2.5 mm from the 14 mm cutouts, >= 2 mm from the board edge,
@@ -566,9 +581,10 @@ pcbs:
         what: kabuki/trackpoint_sk8707_008
         where: [[aux, meta.mirrored ~ true]]
         adjust:
-          # 1 mm outward from the aux centre, so the M2 screw head on the layer-key side
-          # clears that switch's housing (head edge 10.4 mm from the stick vs housing at 10.5)
-          shift: [-1, 0]
+          # 1.75 mm outward from the aux centre. 1 mm (2026-11-02) let the M2 screw head on the
+          # layer-key side clear that switch's housing; 0.75 mm more (2026-11-08) keeps the
+          # sensor tab clear of the layer key's Choc socket. Other tab: 0.8 mm from the JST.
+          shift: [-1.75, 0]
         params:
           side: B # sensor plate screwed to the underside
           sensor_rotation: 180 # tail points up, toward the middle-bottom key (the only rotation that fits)
@@ -681,7 +697,9 @@ pcbs:
         what: ceoloide/power_switch_smd_side
         where:
           ref: mirror_fingers_pinky_bottom
-          shift: [-(hx + margin) + 3.1, hy - 0.5]
+          # 1.1 mm higher than the left half: on this half the pinky-bottom key's Choc socket is
+          # in its upper half, right below the switch (2026-11-08)
+          shift: [-(hx + margin) + 3.1, hy + 0.6]
           rotate: 180
         params:
           side: B
