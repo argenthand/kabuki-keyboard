@@ -1,708 +1,302 @@
-# Kabuki (trackpoint split, Narsil successor) — Ergogen config
-# Stage: points + outlines done; pcbs = switches, diodes, XIAO, JST, power switch, encoder, trackpoint, holes.
-# 2026-11-08: hybrid MX + Choc hotswap on every key (`kabuki/switch_hybrid`, replaces the built-in `mx`).
-#   Diodes moved into the gap beside each key's MX socket (8.25 mm from the centre); the encoder
-#   push diode keeps its spot. Right half: power switch 1.1 mm higher, trackpoint 0.75 mm further
-#   out. KiCad 9 DRC: 0 errors; unconnected 95 left, 97 right.
-# 2026-11-05: 7 mounting holes replaced by 4 corner holes + 1 spare, for a plate screwed into case-floor
-#   posts. Battery bay moved 1 mm toward the thumbs to clear the top inner post.
-# 2026-11-05: converted to MX: 19.05 mm spacing, hotswap `mx` footprint, ring stagger 0.45 -> 0.55.
-#   Replaces Choc v1 on 18 x 17 mm spacing. Power switch y now scales with the key cell.
-# 2026-11-05: built-in diode swapped for ceoloide's 2-pad version (#27); PS/2 pull-ups, RC reset and
-#   encoder pull-ups added (#26, #38); antenna rule area added (#10); trackpoint keepout fixed (#42).
-# 2026-11-03: dedicated reset switches removed (R7): use the XIAO's onboard reset button via a case pinhole.
-# 2026-11-02: thumbs moved under middle/index/inner (follow their stagger); curved outline.
-# 2026-11-02: first footprints. Passed the clearance test (clearance.py) on both halves.
-#
-# Footprints outside Ergogen's built-ins live next to this file:
-#   footprints/fff/       https://github.com/ImStuBTW/ergogen-v4-footprints  (xiao-ble.js)
-#   footprints/ceoloide/  https://github.com/ceoloide/ergogen-footprints     (JST, power, encoder, holes, diode)
-#   footprints/kabuki/    this project (trackpoint, easter egg, 0603 passive, rule area)
-# Run on the folder, not the file:  ergogen .   (config must be named config.yaml)
-#
-# 2026-11-02: XIAO pins mapped (see the mcu footprints); every net now reaches the XIAO.
-# Freeze this file before routing: Ergogen rewrites the whole .kicad_pcb on every run.
 meta:
   engine: 4.1.0
   name: kabuki
   version: 1.0
 
 units:
-  # global key pitch: MX spacing (19.05 x 19.05 mm). Staggers are fractions of kx,
-  # so a different spacing keeps the same proportions.
-  kx: U
-  ky: U
-  hx: kx / 2 # half key cell, used to reach key corners
-  hy: ky / 2
-
-  # board margin past the key cells (>= 1.5 so the battery fits, see below)
+  # Ergogen's default key pitch is u (19 mm); MX is U (19.05 mm)
+  $default_spread: U
+  $default_padding: U
   margin: 2
-
-  # staggers (fraction of kx, relative to the PREVIOUS column, cumulative)
-  stagger_ring: kx * 0.55 # 55%
-  stagger_middle: kx * 0.45 # 45%
-  stagger_index: -(kx * 0.35) # 35%
-  stagger_indexinner: -(kx * 0.15) # 15%
-
-  # thumb row: sits under the middle / index / indexinner columns and follows their stagger.
-  # thumb_gap = extra space between a column's bottom key and its thumb key (3 mm as before)
-  thumb_gap: 3
-
-  # curved outline (Ferris Sweep-like): keys + margin, then rounded with a "closing"
-  # (grow by curve_r, shrink by curve_r) so every inside corner gets a curve_r radius,
-  # then outside corners get a corner_r fillet
   curve_r: 10
   corner_r: 3
-
-  # Seeed XIAO nRF52840: 17.8 x 21 mm (https://www.electrokit.com/en/xiao-nrf52840-seeed-studio)
-  xiao_w: 17.8
   xiao_h: 21
-  xiao_gap: 2 # clearance between the pinky-home keycap cell and the XIAO
-
-  # EEMB LP603449, max 34.5 x 51 x 6.3 mm (https://www.eemb.com/product-147), placed vertically
-  bat_w: 34.5
-  bat_h: 51
-
-  # trackpoint (SK8707-01-008) in the aux slot: hole + free radius around the nub (placeholders)
-  tp_hole_r: 2.25 # ~4.5 mm hole, confirm from the -008 drawing
-  tp_free_r: 4.5 # ~7 mm nub cap + ~1 mm finger margin, confirm after measuring the cap
-
-  # rotary encoder placeholder body (EC11-class is 12 x 12 mm; part not chosen yet)
-  enc_size: 12
-
-  # aux slot (encoder left / trackpoint right), same height as a key cell
-  aux_w: kx
+  xiao_gap: 2
+  # XIAO centre, from the pinky home key
+  xiao_y: U / 2 + xiao_gap + xiao_h / 2
 
 points:
   zones:
     fingers:
-      # fix placement on kicad sheet
-      anchor:
-        shift: [100, -100]
+      # moves the boards onto KiCad's sheet
+      anchor.shift: [100, -100]
       key:
-        padding: ky
-        spread: kx
         tags: [key]
       columns:
+        # 4 x 4 matrix: ring, middle, index and inner are the columns;
+        # the pinky keys join the thumbs on row R3
         pinky:
-          key.column_net: COL0
           rows:
-            thumb.skip: true # no thumb key under the pinky
-            top.skip: true # Birdie 23332: 2 keys on the pinky; the XIAO uses this slot
+            top.skip: true
+            home: {column_net: C0, row_net: R3}
+            bottom: {column_net: C1, row_net: R3}
         ring:
-          key:
-            stagger: stagger_ring
-            column_net: COL1
-          rows:
-            thumb.skip: true # no thumb key under the ring finger
+          key.stagger: 0.55U
+          key.column_net: C0
         middle:
-          key:
-            stagger: stagger_middle
-            column_net: COL2
-          rows:
-            # Aux slot: left = rotary encoder (push on COL2/ROW3), right = trackpoint
-            thumb:
-              name: thumb_aux
-              tags: [key, aux]
+          key.stagger: 0.45U
+          key.column_net: C1
         index:
-          key:
-            stagger: stagger_index
-            column_net: COL3
-          rows:
-            thumb.name: thumb_layer
-        indexinner:
-          key:
-            stagger: stagger_indexinner
-            column_net: COL4
-          rows:
-            thumb.name: thumb_space
+          key.stagger: -0.35U
+          key.column_net: C2
+        inner:
+          key.stagger: -0.15U
+          key.column_net: C3
+          rows.bottom.tags: [encoder]
       rows:
-        # Rows are built bottom to top. The thumb row comes first, so each thumb key sits
-        # exactly one key + thumb_gap below its column's bottom key and follows the stagger.
+        bottom.row_net: R2
+        home.row_net: R1
+        top.row_net: R0
+    thumbs:
+      anchor:
+        ref: fingers_index_bottom
+        # 3 mm row gap, as in v0's fit-tested thumb row
+        shift: [0, -U - 3]
+        rotate: -8
+      key:
+        tags: [key]
+        row_net: R3
+      columns:
+        near:
+          key.column_net: C2
+        far:
+          key:
+            column_net: C3
+            splay: -12
+            # pivot on the bottom-left corner so the two caps fan from their bottom edges
+            origin: [-0.5U, -0.5U]
+      rows:
         thumb:
-          row_net: ROW3
-          padding: ky + thumb_gap
-        bottom:
-          row_net: ROW0
-        home:
-          row_net: ROW1
-        top:
-          row_net: ROW2
-
-  # Mirror the left half to get the right half. Only affects the preview spacing:
-  # each half becomes its own PCB below. distance = gap between indexinner_home and its mirror.
   mirror:
-    ref: fingers_indexinner_home
+    ref: fingers_inner_home
     distance: 70
 
 outlines:
-  # ---------- keycap cells, drawn 0.5 mm under the 19.05 mm pitch; aux drawn separately ----------
-  left_keys:
-    - what: rectangle
-      where: [[key, -aux, meta.mirrored ~ false]]
-      size: [kx - 0.5, ky - 0.5]
-  right_keys:
-    - what: rectangle
-      where: [[key, -aux, meta.mirrored ~ true]]
-      size: [kx - 0.5, ky - 0.5]
-
-  # ---------- board outlines ----------
-  # 1) raw: one rectangle per key cell (+ margin), plus the XIAO area above the pinky.
-  #    Neighbouring rectangles overlap by 2 x margin, so they merge into one shape.
-  # 2) grow the whole shape by curve_r with round joints (joints: 0)...
-  # 3) ...then shrink it back by curve_r: inside corners keep a curve_r radius, outside
-  #    corners come back sharp, so a final fillet rounds those.
+  # a cell per key plus the XIAO area, grown by curve_r with round joints...
   left_raw:
     - what: rectangle
-      where: [[key, meta.mirrored ~ false]]
-      size: [kx + 2 * margin, ky + 2 * margin]
+      where: [[meta.mirrored ~ false]]
+      size: [U + 2 * margin, U + 2 * margin]
     - what: rectangle
       where: fingers_pinky_home
-      # from the pinky-home cell's top edge to the XIAO's far end (flush with the board edge)
-      adjust.shift: [0, hy + (xiao_gap + xiao_h) / 2]
-      size: [kx + 2 * margin, xiao_gap + xiao_h]
+      adjust.shift: [0, U / 2 + (xiao_gap + xiao_h) / 2]
+      size: [U + 2 * margin, xiao_gap + xiao_h]
       expand: curve_r
+      joints: 0
+  # ...then shrunk back by curve_r (rounds inside corners) and corner_r more, then grown
+  # by corner_r (rounds outside corners). Ergogen's fillet missed a thumb corner on one half
+  _left_shrunk:
+    - what: outline
+      name: left_raw
+      expand: -(curve_r + corner_r)
       joints: 0
   left_board:
     - what: outline
-      name: left_raw
-      expand: -curve_r
+      name: _left_shrunk
+      expand: corner_r
       joints: 0
-      fillet: corner_r
-
   right_raw:
     - what: rectangle
-      where: [[key, meta.mirrored ~ true]]
-      size: [kx + 2 * margin, ky + 2 * margin]
+      where: [[meta.mirrored ~ true]]
+      size: [U + 2 * margin, U + 2 * margin]
     - what: rectangle
       where: mirror_fingers_pinky_home
-      adjust.shift: [0, hy + (xiao_gap + xiao_h) / 2]
-      size: [kx + 2 * margin, xiao_gap + xiao_h]
+      adjust.shift: [0, U / 2 + (xiao_gap + xiao_h) / 2]
+      size: [U + 2 * margin, xiao_gap + xiao_h]
       expand: curve_r
+      joints: 0
+  _right_shrunk:
+    - what: outline
+      name: right_raw
+      expand: -(curve_r + corner_r)
       joints: 0
   right_board:
     - what: outline
-      name: right_raw
-      expand: -curve_r
+      name: _right_shrunk
+      expand: corner_r
       joints: 0
-      fillet: corner_r
-  # ---------- component keep-outs / markers ----------
-  # XIAO above the 2 pinky keys, USB-C end at the top edge
-  left_xiao:
-    - what: rectangle
-      where: fingers_pinky_home
-      adjust.shift: [0, hy + xiao_gap + xiao_h / 2]
-      size: [xiao_w, xiao_h]
-  right_xiao:
-    - what: rectangle
-      where: mirror_fingers_pinky_home
-      adjust.shift: [0, hy + xiao_gap + xiao_h / 2]
-      size: [xiao_w, xiao_h]
-
-  # Battery under index + indexinner, long side vertical, centred between the two home keys
+  # EEMB LP603449 (max 34.5 x 51 mm) under the middle and index columns, clear of the encoder pins
   left_battery:
     - what: rectangle
       where:
-        aggregate.parts: [fingers_index_home, fingers_indexinner_home]
-      adjust.shift: [0, -1] # 1 mm toward the thumbs, to clear the top inner screw post
-      size: [bat_w, bat_h]
+        aggregate.parts: [fingers_middle_home, fingers_index_home]
+      size: [34.5, 51]
   right_battery:
     - what: rectangle
       where:
-        aggregate.parts: [mirror_fingers_index_home, mirror_fingers_indexinner_home]
-      adjust.shift: [0, -1] # 1 mm toward the thumbs, to clear the top inner screw post
-      size: [bat_w, bat_h]
-
-  # Aux slot cell (same on both halves), under the middle column
-  left_aux:
-    - what: rectangle
-      where: [[aux, meta.mirrored ~ false]] # plain "aux" would also match the mirror's tag
-      size: [aux_w, ky]
-  right_aux:
-    - what: rectangle
-      where: [[aux, meta.mirrored ~ true]]
-      size: [aux_w, ky]
-
-  # Left aux = encoder body; right aux = trackpoint hole + free radius around the nub
-  left_encoder:
-    - what: rectangle
-      where: [[aux, meta.mirrored ~ false]] # plain "aux" would also match the mirror's tag
-      size: [enc_size, enc_size]
-  right_trackpoint:
-    - what: circle
-      where: [[aux, meta.mirrored ~ true]]
-      radius: tp_hole_r
-  right_trackpoint_free:
-    - what: circle
-      where: [[aux, meta.mirrored ~ true]]
-      radius: tp_free_r
-
-  # ---------- previews (stack = draw everything on top, no merging) ----------
-  left_preview:
-    - left_board
-    - what: outline
-      name: left_keys
-      operation: stack
-    - what: outline
-      name: left_xiao
-      operation: stack
-    - what: outline
-      name: left_battery
-      operation: stack
-    - what: outline
-      name: left_aux
-      operation: stack
-    - what: outline
-      name: left_encoder
-      operation: stack
-  right_preview:
-    - right_board
-    - what: outline
-      name: right_keys
-      operation: stack
-    - what: outline
-      name: right_xiao
-      operation: stack
-    - what: outline
-      name: right_battery
-      operation: stack
-    - what: outline
-      name: right_aux
-      operation: stack
-    - what: outline
-      name: right_trackpoint
-      operation: stack
-    - what: outline
-      name: right_trackpoint_free
-      operation: stack
+        aggregate.parts: [mirror_fingers_middle_home, mirror_fingers_index_home]
+      size: [34.5, 51]
 
 pcbs:
-  # Two separate boards, one per half (not one reversible board): the halves differ at the aux
-  # slot (encoder vs trackpoint), and the XIAO footprint is single-sided.
-  # Footprints sit on the BACK (B), except the switches, the encoder and the 0603 passives.
-  # The passives go on top, under the plate (~0.5-0.9 mm tall vs the ~3.5 mm gap): that's where
-  # they have room right next to the pins they connect to.
   left:
     template: kicad8
     outlines:
       edge:
         outline: left_board
-      xiao:
-        outline: left_xiao
-        layer: B.SilkS # XIAO is on the back now
       battery:
         outline: left_battery
         layer: B.SilkS
-      encoder:
-        outline: left_encoder
-        layer: F.SilkS
     footprints:
       switch:
-        # MX + Choc hotswap on every key (2026-11-07, feasibility R16.1). Replaces the built-in
-        # `mx`. MX socket in the upper half, Choc socket in the lower half (Choc switches go in
-        # turned 180 degrees). Only this half's keys, not the aux slot (the encoder lives there).
-        what: kabuki/switch_hybrid
-        where: [[key, -aux, meta.mirrored ~ false]]
+        what: ceoloide/switch_mx
+        where: [[key, meta.mirrored ~ false]]
         params:
           from: "{{column_net}}"
           to: "{{colrow}}"
       diode:
-        what: ceoloide/diode_tht_sod123 # 2 back pads; pad 1 (cathode) = "to" = row net
-        # every key except the aux slot; the encoder push's diode is placed below
-        where: [[key, -aux, meta.mirrored ~ false]]
-        params:
-          side: B
-          from: "{{colrow}}"
-          to: "{{row_net}}"
-        adjust:
-          # in the gap above the key, past its MX socket (pads end 6.3 mm up) and below the
-          # Choc socket of the key above (pads start 11.8 mm up). Was [0, -5], where the Choc
-          # socket now sits. Same spot as the Lever Flake's diodes.
-          shift: [0, 8.25]
-      diode_encoder:
-        # the encoder push is a matrix key (COL2/ROW3) and needs a diode. The aux slot has no
-        # switch sockets, so it keeps the old spot below the encoder centre: [0, 8.25] would
-        # land on the encoder's push-switch pins.
         what: ceoloide/diode_tht_sod123
-        where: [[aux, meta.mirrored ~ false]]
+        where: [[meta.mirrored ~ false]]
         params:
-          side: B
           from: "{{colrow}}"
           to: "{{row_net}}"
-        adjust:
-          shift: [0, -5]
+        adjust.shift: [0, -5]
       encoder:
         what: ceoloide/rotary_encoder_ec11_ec12
-        where: [[aux, meta.mirrored ~ false]]
+        where: [[encoder, meta.mirrored ~ false]]
         params:
-          side: F # pokes through the plate: the plate needs a cutout here
-          # push switch = one more matrix key, wired exactly like a switch: column -> colrow -> diode
-          S1: "{{column_net}}" # COL2
-          S2: "{{colrow}}" # middle_thumb (colrow keeps the column/row names, not the thumb_aux rename)
-          # quadrature pins; mapped to XIAO pins in the pin-assignment step
+          S1: "{{column_net}}"
+          S2: "{{colrow}}"
           A: ENC_A
-          B: GND # common pin
-          C: ENC_C
-      # ---- M2 mounting holes (4 corners + 1 spare per half) ----
-      # The plate screws down through these into heat-set inserts on case-floor posts.
-      # Clear on BOTH halves: >= 2.5 mm from the 14 mm cutouts, >= 2 mm from the board edge,
-      # ~2.5 mm or more from back parts, >= 20 mm from the antenna end. Same shifts on both
-      # halves; Ergogen mirrors them.
-      mount_1:
-        what: ceoloide/mounting_hole_npth
-        where:
-          ref: fingers_ring_top
-          shift: [-9.8, 9.12] # top outer: as close to the XIAO corner as the XIAO allows
-        params:
-          hole_size: 2.2 # M2
-          hole_drill: 2.2
-      mount_2:
-        what: ceoloide/mounting_hole_npth
-        where:
-          ref: fingers_indexinner_top
-          shift: [9, 9.33] # top inner corner
-        params:
-          hole_size: 2.2 # M2
-          hole_drill: 2.2
-      mount_3:
-        what: ceoloide/mounting_hole_npth
-        where:
-          ref: thumb_space
-          shift: [9, -9.28] # bottom inner corner
-        params:
-          hole_size: 2.2 # M2
-          hole_drill: 2.2
-      mount_4:
-        what: ceoloide/mounting_hole_npth
-        where:
-          ref: fingers_pinky_bottom
-          shift: [-9, -9.4] # bottom outer corner
-        params:
-          hole_size: 2.2 # M2
-          hole_drill: 2.2
-      mount_spare:
-        what: ceoloide/mounting_hole_npth
-        where:
-          ref: thumb_aux
-          shift: [6.25, 9.75] # centre spare, unused unless the plate flexes
-        params:
-          hole_size: 2.2 # M2
-          hole_drill: 2.2
-      # ---- easter egg (top side, under the plate: you only see it with the plate off) ----
-      easter_egg:
-        what: kabuki/kabuki_mask
-        where:
-          ref: fingers_ring_bottom
-          shift: [-1.3, -10.9] # free top-side spot between the pinky, ring and aux keys
-        params:
-          side: F
-          height: 5.5
-          text1: KABUKI
+          C: ENC_B
       mcu:
-        what: fff/xiao-ble
-        # centred on the pinky column, USB end flush with the top edge
+        what: imstubtw/xiao-ble
         where:
           ref: fingers_pinky_home
-          shift: [0, hy + xiao_gap + xiao_h / 2]
+          shift: [0, xiao_y]
         params:
-          side: B # on the back: ~3.5 mm tall, no margin in the ~3.5 mm gap under an MX plate
-          # battery path: JST + (BAT_P) -> power switch -> BAT_SW -> XIAO battery pad
+          side: B
           BAT_POS: BAT_SW
-          BAT_NEG: GND
-          # pin map (2026-11-02). XIAO is on the back, so seen from the top D0-D6 face the ring
-          # column on this half. Long runs (COL1-4, rows) use that side; COL0 (pinky, right below
-          # the XIAO), ROW3 (thumbs) and the encoder use the outer side (D7-D10).
-          P0: COL1 # D0
-          P1: COL2 # D1
-          P2: COL3 # D2
-          P3: COL4 # D3
-          P4: ROW0 # D4
-          P5: ROW1 # D5
-          P6: ROW2 # D6
-          P7: COL0 # D7
-          P8: ROW3 # D8
-          P9: ENC_A # D9
-          P10: ENC_C # D10
-      # ---- encoder pull-ups: DNP, default empty (#38) ----
-      # Firmware uses internal pull-ups (GPIO_PULL_UP). If these are ever fitted, try 47k and
-      # remove that flag. Top side, beside the XIAO pins they connect to (D9, D10, 3V3).
-      enc_pullup_a:
-        what: kabuki/passive_0603
-        where:
-          ref: fingers_pinky_home
-          shift: [-4.65, hy + xiao_gap + xiao_h / 2 - 2.54]
-        params:
-          side: F
-          dnp: true
-          value: 47k
-          silk: DNP
-          silk_offset: [3.6, 0]
-          from: ENC_A
-          to: 3V3
-      enc_pullup_c:
-        what: kabuki/passive_0603
-        where:
-          ref: fingers_pinky_home
-          shift: [-4.65, hy + xiao_gap + xiao_h / 2]
-        params:
-          side: F
-          dnp: true
-          value: 47k
-          silk: DNP
-          silk_offset: [3.6, 0]
-          from: ENC_C
-          to: 3V3
-      # ---- no copper pour at the XIAO antenna end, both layers (#10) ----
-      antenna_rule_area:
-        what: kabuki/rule_area
-        where:
-          ref: fingers_pinky_home
-          shift: [0, hy + xiao_gap + 3] # XIAO end + the 2 mm gap toward the pinky keys
-        params:
-          name: xiao_antenna
-          width: xiao_w
-          height: 10
-          copperpour: false
+          # the XIAO ties its BAT- pad to GND internally, so this pad needs no track
+          BAT_NEG: XIAO_BAT_N
+          # D0-D6 face the keys; the outer side (D8-D10) takes the nets with keys right below
+          # the XIAO (pinky). D7 is left free: it sits against the antenna keep-out
+          P0: R0
+          P1: R1
+          P2: C2
+          P3: C3
+          P4: R2
+          P5: ENC_A
+          P6: ENC_B
+          P8: R3
+          P9: C1
+          P10: C0
       jst:
         what: ceoloide/battery_connector_jst_ph_2
-        # free area below the ring-bottom key, left of the aux slot; plug faces the battery
         where:
           ref: fingers_ring_bottom
-          shift: [-5.5, -13] # 2.5 mm outward (was -3) to clear the trackpoint sensor plate's tab
+          shift: [5.45, -6.28]
           rotate: 90
         params:
           side: B
-          BAT_P: BAT_P # battery +
-          BAT_N: GND # battery -
       power:
         what: ceoloide/power_switch_smd_side
-        # outer edge strip next to the pinky keys; lever sticks out of the outer edge
         where:
           ref: fingers_pinky_bottom
-          shift: [-(hx + margin) + 3.1, hy - 0.5]
+          shift: [-(U / 2 + margin) + 3.1, U / 2 - 0.5]
+          # lever out of the outer edge
           rotate: 180
         params:
           side: B
           include_courtyard: true
-          from: BAT_P # from the JST
-          to: BAT_SW # to the XIAO battery pad; switch off = battery disconnected (and no charging)
+          from: BAT_P
+          to: BAT_SW
+      # M2 holes: clear of the plate cutouts (2.5 mm), back-side parts and the battery
+      # (3 mm, for a 5.5 mm case post) and the board edge (3 mm), on both halves
+      hole_top_outer:
+        what: ceoloide/mounting_hole_npth
+        where: {ref: fingers_ring_top, shift: [6.17, 10.59]}
+      hole_top_inner:
+        what: ceoloide/mounting_hole_npth
+        where: {ref: fingers_inner_top, shift: [-7.23, 10.05]}
+      hole_bottom_inner:
+        what: ceoloide/mounting_hole_npth
+        where: {ref: fingers_inner_bottom, shift: [9.52, -16.11]}
+      hole_bottom_outer:
+        what: ceoloide/mounting_hole_npth
+        where: {ref: fingers_pinky_bottom, shift: [12.22, -0.83]}
   right:
     template: kicad8
     outlines:
       edge:
         outline: right_board
-      xiao:
-        outline: right_xiao
-        layer: B.SilkS
       battery:
         outline: right_battery
         layer: B.SilkS
-      # (the stick hole now comes from the trackpoint footprint below, as an NPTH)
     footprints:
       switch:
-        what: kabuki/switch_hybrid
-        where: [[key, -aux, meta.mirrored ~ true]]
+        what: ceoloide/switch_mx
+        where: [[key, meta.mirrored ~ true]]
         params:
           from: "{{column_net}}"
           to: "{{colrow}}"
-        adjust:
-          # Mirroring moves the keys but doesn't mirror the footprint: the socket would still
-          # stick out to the right, into the XIAO and the outer edge. Rotating the switch 180°
-          # puts the socket in the lower half, sticking out inward instead.
-          rotate: 180
       diode:
         what: ceoloide/diode_tht_sod123
-        where: [[key, -aux, meta.mirrored ~ true]] # aux = trackpoint, not a key
+        where: [[meta.mirrored ~ true]]
         params:
-          side: B
           from: "{{colrow}}"
           to: "{{row_net}}"
-        adjust:
-          # the switch is turned 180 degrees on this half, so the MX socket is in the lower half
-          # and the diode goes in the gap below the key. Was [0, 5], where the Choc socket now sits.
-          shift: [0, -8.25]
-      # ---- M2 mounting holes (4 corners + 1 spare per half) ----
-      # The plate screws down through these into heat-set inserts on case-floor posts.
-      # Clear on BOTH halves: >= 2.5 mm from the 14 mm cutouts, >= 2 mm from the board edge,
-      # ~2.5 mm or more from back parts, >= 20 mm from the antenna end. Same shifts on both
-      # halves; Ergogen mirrors them.
-      mount_1:
-        what: ceoloide/mounting_hole_npth
-        where:
-          ref: mirror_fingers_ring_top
-          shift: [-9.8, 9.12] # top outer: as close to the XIAO corner as the XIAO allows
+        adjust.shift: [0, -5]
+      encoder:
+        what: ceoloide/rotary_encoder_ec11_ec12
+        where: [[encoder, meta.mirrored ~ true]]
         params:
-          hole_size: 2.2 # M2
-          hole_drill: 2.2
-      mount_2:
-        what: ceoloide/mounting_hole_npth
-        where:
-          ref: mirror_fingers_indexinner_top
-          shift: [9, 9.33] # top inner corner
-        params:
-          hole_size: 2.2 # M2
-          hole_drill: 2.2
-      mount_3:
-        what: ceoloide/mounting_hole_npth
-        where:
-          ref: mirror_thumb_space
-          shift: [9, -9.28] # bottom inner corner
-        params:
-          hole_size: 2.2 # M2
-          hole_drill: 2.2
-      mount_4:
-        what: ceoloide/mounting_hole_npth
-        where:
-          ref: mirror_fingers_pinky_bottom
-          shift: [-9, -9.4] # bottom outer corner
-        params:
-          hole_size: 2.2 # M2
-          hole_drill: 2.2
-      mount_spare:
-        what: ceoloide/mounting_hole_npth
-        where:
-          ref: mirror_thumb_aux
-          shift: [6.25, 9.75] # centre spare, unused unless the plate flexes
-        params:
-          hole_size: 2.2 # M2
-          hole_drill: 2.2
-      easter_egg:
-        what: kabuki/kabuki_mask
-        where:
-          ref: mirror_thumb_aux
-          shift: [1.4, 7.5] # free top-side spot above the trackpoint (x is mirrored for mirror_ refs)
-        params:
-          side: F
-          height: 6.5
-          text1: KABUKI
-          text2: B · 2026
-          text_size: 1.0 # JLCPCB minimum silkscreen text height
-      trackpoint:
-        what: kabuki/trackpoint_sk8707_008
-        where: [[aux, meta.mirrored ~ true]]
-        adjust:
-          # 1.75 mm outward from the aux centre. 1 mm (2026-11-02) let the M2 screw head on the
-          # layer-key side clear that switch's housing; 0.75 mm more (2026-11-08) keeps the
-          # sensor tab clear of the layer key's Choc socket. Other tab: 0.8 mm from the JST.
-          shift: [-1.75, 0]
-        params:
-          side: B # sensor plate screwed to the underside
-          sensor_rotation: 180 # tail points up, toward the middle-bottom key (the only rotation that fits)
-          hole_diameter: 2 * tp_hole_r # 4.5 mm: stick boss is Ø3.70 (DS0048 v1.04 p.7)
-          # 1x5 wire pads centred 7.5 mm below the stick, between the sensor and the board edge:
-          # closest spot that clears every pad, part and the sensor outline (searched)
-          pads_offset: [-5.08, 7.5]
-          pads_rotation: 0
-          CLK: TP_CLK # PS/2 clock -> XIAO D4/D5 in the pin-assignment step (R3.2)
-          DATA: TP_DATA
-          RST: TP_RST # floats by default; DNP RC reset below (#26)
+          S1: "{{column_net}}"
+          S2: "{{colrow}}"
+          A: ENC_A
+          C: ENC_B
       mcu:
-        what: fff/xiao-ble
+        what: imstubtw/xiao-ble
         where:
           ref: mirror_fingers_pinky_home
-          shift: [0, hy + xiao_gap + xiao_h / 2] # shifts on mirrored refs are mirrored for you
+          shift: [0, xiao_y]
         params:
           side: B
           BAT_POS: BAT_SW
-          BAT_NEG: GND
-          # pin map (2026-11-02). On this half D0-D6 face the outer edge and D7-D10 face the ring
-          # column. PS/2 must be on D4/D5 (the only full-speed pins, feasibility R3.2).
-          P0: COL0 # D0
-          P1: ROW0 # D1
-          P2: ROW1 # D2
-          P3: ROW2 # D3
-          P4: TP_CLK # D4, PS/2 clock
-          P5: TP_DATA # D5, PS/2 data
-          P6: ROW3 # D6
-          P7: COL1 # D7
-          P8: COL2 # D8
-          P9: COL3 # D9
-          P10: COL4 # D10
-      # ---- PS/2 pull-ups (fitted) and trackpoint RC reset (DNP) (#26) ----
-      # Top side, just above the wire pads, where 3V3, CLK, DATA, RST and GND are all next to
-      # each other. Stick = aux point + 1 mm outward; these shifts are from the aux point.
-      tp_pullup_clk:
-        what: kabuki/passive_0603
-        where:
-          ref: mirror_thumb_aux
-          shift: [1.54, -4.5] # over the GND wire pad; the stick hole is right above CLK
-          rotate: 90
-        params:
-          side: F
-          value: 4.7k
-          silk: 4.7k
-          from: 3V3 # top pad
-          to: TP_CLK # bottom pad, toward the wire pads
-      tp_pullup_data:
-        what: kabuki/passive_0603
-        where:
-          ref: mirror_thumb_aux
-          shift: [-3.54, -4.5]
-          rotate: 90
-        params:
-          side: F
-          value: 4.7k
-          silk: 4.7k
-          from: 3V3
-          to: TP_DATA
-      tp_rst_cap:
-        what: kabuki/passive_0603
-        where:
-          ref: mirror_thumb_aux
-          shift: [-6.08, -4.5]
-          rotate: 90
-        params:
-          designator: C
-          side: F
-          dnp: true
-          value: 100n
-          from: 3V3
-          to: TP_RST
-      tp_rst_res:
-        what: kabuki/passive_0603
-        where:
-          ref: mirror_thumb_aux
-          shift: [-8.62, -4.5]
-          rotate: 90
-        params:
-          side: F
-          dnp: true
-          value: 10k
-          silk: DNP
-          silk_offset: [0, -1.7]
-          from: GND
-          to: TP_RST
-      # ---- no copper pour at the XIAO antenna end, both layers (#10) ----
-      antenna_rule_area:
-        what: kabuki/rule_area
-        where:
-          ref: mirror_fingers_pinky_home
-          shift: [0, hy + xiao_gap + 3]
-        params:
-          name: xiao_antenna
-          width: xiao_w
-          height: 10
-          copperpour: false
+          # the XIAO ties its BAT- pad to GND internally, so this pad needs no track
+          BAT_NEG: XIAO_BAT_N
+          # the footprint isn't mirrored, so on this half only D7-D10 face the keys:
+          # they take the nets that go furthest in (encoder, index and inner columns)
+          P0: R0
+          P1: R1
+          P2: R2
+          P3: C0
+          P4: C1
+          P5: R3
+          P7: ENC_B
+          P8: ENC_A
+          P9: C2
+          P10: C3
       jst:
         what: ceoloide/battery_connector_jst_ph_2
         where:
           ref: mirror_fingers_ring_bottom
-          shift: [-5.5, -13] # 2.5 mm outward (was -3) to clear the trackpoint sensor plate's tab
+          shift: [5.45, -6.28]
           rotate: 90
         params:
           side: B
-          BAT_P: BAT_P # battery +
-          BAT_N: GND # battery -
       power:
         what: ceoloide/power_switch_smd_side
         where:
           ref: mirror_fingers_pinky_bottom
-          # 1.1 mm higher than the left half: on this half the pinky-bottom key's Choc socket is
-          # in its upper half, right below the switch (2026-11-08)
-          shift: [-(hx + margin) + 3.1, hy + 0.6]
-          rotate: 180
+          # 2.7 mm higher than the left: the unmirrored socket of the key below reaches the edge here
+          shift: [-(U / 2 + margin) + 3.1, U / 2 + 2.2]
+          # footprints aren't mirrored, so no rotation keeps this lever on the outer edge
         params:
           side: B
           include_courtyard: true
-          from: BAT_P # from the JST
-          to: BAT_SW # to the XIAO battery pad; switch off = battery disconnected (and no charging)
+          from: BAT_P
+          to: BAT_SW
+      # M2 holes: clear of the plate cutouts (2.5 mm), back-side parts and the battery
+      # (3 mm, for a 5.5 mm case post) and the board edge (3 mm), on both halves
+      hole_top_outer:
+        what: ceoloide/mounting_hole_npth
+        where: {ref: mirror_fingers_ring_top, shift: [6.17, 10.59]}
+      hole_top_inner:
+        what: ceoloide/mounting_hole_npth
+        where: {ref: mirror_fingers_inner_top, shift: [-7.23, 10.05]}
+      hole_bottom_inner:
+        what: ceoloide/mounting_hole_npth
+        where: {ref: mirror_fingers_inner_bottom, shift: [9.52, -16.11]}
+      hole_bottom_outer:
+        what: ceoloide/mounting_hole_npth
+        where: {ref: mirror_fingers_pinky_bottom, shift: [12.22, -0.83]}
