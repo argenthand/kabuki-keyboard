@@ -65,6 +65,10 @@ points:
             splay: -12
             # pivot on the bottom-left corner so the two caps fan from their bottom edges
             origin: [-0.5U, -0.5U]
+            # 1.5u cap, long side vertical: dropped 0.25U so its top edge stays
+            # where a 1u cap's would be, clear of the knob
+            height: 1.5U
+            shift: [0, -0.25U]
       rows:
         thumb:
   mirror:
@@ -77,6 +81,9 @@ outlines:
     - what: rectangle
       where: [[meta.mirrored ~ false]]
       size: [U + 2 * margin, U + 2 * margin]
+    - what: rectangle
+      where: thumbs_far_thumb
+      size: [U + 2 * margin, 1.5U + 2 * margin]
     - what: rectangle
       where: fingers_pinky_home
       adjust.shift: [0, U / 2 + (xiao_gap + xiao_h) / 2]
@@ -99,6 +106,9 @@ outlines:
     - what: rectangle
       where: [[meta.mirrored ~ true]]
       size: [U + 2 * margin, U + 2 * margin]
+    - what: rectangle
+      where: mirror_thumbs_far_thumb
+      size: [U + 2 * margin, 1.5U + 2 * margin]
     - what: rectangle
       where: mirror_fingers_pinky_home
       adjust.shift: [0, U / 2 + (xiao_gap + xiao_h) / 2]
@@ -174,9 +184,9 @@ pcbs:
           P1: R1
           P2: C2
           P3: C3
-          P4: R2
-          P5: ENC_A
-          P6: ENC_B
+          P4: ENC_A
+          P5: ENC_B
+          P6: R2
           P8: R3
           P9: C1
           P10: C0
@@ -214,6 +224,20 @@ pcbs:
       hole_bottom_outer:
         what: ceoloide/mounting_hole_npth
         where: {ref: fingers_pinky_bottom, shift: [12.22, -0.83]}
+      # back silkscreen, beside the battery outline toward the inner column
+      credit:
+        what: ceoloide/utility_text
+        where:
+          aggregate.parts: [fingers_middle_home, fingers_index_home]
+          shift: [19.85, -25.5]
+          rotate: 90
+        params:
+          side: B
+          mirrored: true
+          text: kabuki by argenthand
+          height: 2
+          width: 2
+          thickness: 0.3
   right:
     template: kicad8
     outlines:
@@ -300,3 +324,16 @@ pcbs:
       hole_bottom_outer:
         what: ceoloide/mounting_hole_npth
         where: {ref: mirror_fingers_pinky_bottom, shift: [12.22, -0.83]}
+      # back silkscreen, hidden under the battery
+      message:
+        what: ceoloide/utility_text
+        where:
+          aggregate.parts: [mirror_fingers_middle_home, mirror_fingers_index_home]
+          shift: [6.1, -5.6]
+        params:
+          side: B
+          mirrored: true
+          text: kaizen
+          height: 3
+          width: 3
+          thickness: 0.45

@@ -31,7 +31,7 @@ z.SetDoNotAllowPads(False); z.SetDoNotAllowFootprints(False)
 ls = pcbnew.LSET(); ls.AddLayer(pcbnew.F_Cu); ls.AddLayer(pcbnew.B_Cu); z.SetLayerSet(ls)
 z.SetZoneName('xiao_antenna')
 ol = z.Outline(); ol.NewOutline()
-for x, y in ((cx-8.9, cy+8.68), (cx+8.9, cy+8.68), (cx+8.9, cy+12.48), (cx-8.9, cy+12.48)):
+for x, y in ((cx-8.9, cy+9.68), (cx+8.9, cy+9.68), (cx+8.9, cy+12.48), (cx-8.9, cy+12.48)):
     ol.Append(mm(x), mm(y))
 b.Add(z)
 # thin no-track ring inside the board outline: the router keeps only 0.2 mm to edges (JLCPCB's
@@ -66,8 +66,11 @@ b.Add(st)
 dsn = os.path.join(outdir, f'{half}.dsn'); ses = os.path.join(outdir, f'{half}.ses')
 assert pcbnew.ExportSpecctraDSN(b, dsn), 'DSN export failed'
 t = time.time()
-r = subprocess.run(FREEROUTING + [
-                    '-de', dsn, '-do', ses, '-mp', passes, '-mt', '1'], capture_output=True, text=True, timeout=300)
+try:
+    r = subprocess.run(FREEROUTING + [
+                        '-de', dsn, '-do', ses, '-mp', passes, '-mt', '1'] + os.environ.get('FR_EXTRA', '').split(), capture_output=True, text=True, timeout=300)
+except subprocess.TimeoutExpired:
+    sys.exit('router timed out')
 print('freerouting exit', r.returncode, f'{time.time()-t:.0f}s')
 if not os.path.exists(ses):
     print(r.stdout[-3000:], r.stderr[-3000:]); sys.exit(1)
